@@ -10,18 +10,31 @@ class Room:
         #an image
         #items and item descriptions
         #grabbables
-        #choices/ riddles/ tasks
+        #riddles/ tasks
+        self.name = name
+        self.image = image
+        #
+        self.answer = {}
+        self.items = {}
+        self.grabbables = []        
 
 class Game(Frame):
     def __init__(self, parent):
         #create the rooms
+        r1 = Room("Start", "start.")
+        r2 = Room("Haunted Office", "hauntedOffice.jpeg")
+        r3 = Room("Haunted Hall", "hauntedHall.JPG")
+        r4 = Room("Final Destination... almost", "finalRoom.jpeg")
+        
 
         #add any items
+        r1.intro()
 
         #set the current room to r1
         Game.currentRoom
 
         #initialize player's inventory
+        Game.inventory = []
 
     #set up GUI
     def setupGUI(self):
@@ -71,7 +84,16 @@ class Game(Frame):
                              "\nYou are carrying: " +str(Game.inventory) +\
                              "\n\n" + status)
             Game.text.config(state = DISABLED)
-            
+
+    #introduction of the game
+    #player name, rules, etc.
+    def intro(self):
+        #ask player name
+        playerName = input("What is your name? ")
+        #describe the rules
+        print("Welcome to the Haunted Asylum {}. We would like to explain how you will be able to escape.\nYou will have 15 minutes to escape 3 rooms:\n" +\
+              "the Starting Room, the Haunted Hallway, and your Final destination. If you can escape before the time runs out you win, if not...\n GOOD LUCK!".format(playerName))
+        
     #play the game
     def play(self):
         #add rooms
@@ -100,6 +122,7 @@ window.title("Room Adventure")
 g = Game(window)
 
 #begin the game
+
 g.play()
 
 #wait until the main window closes
