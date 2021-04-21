@@ -89,7 +89,7 @@ class Room:
         #ask player name
         self.playerName = input("What is your name? ")
         #describe the rules
-        print("Welcome to the Haunted Asylum {}. We would like to explain how you will be able to escape.\n\nYou will have 15 minutes to escape 3 rooms:\n\n".format(self.playerName) +\
+        return("Welcome to the Haunted Asylum {}. We would like to explain how you will be able to escape.\n\nYou will have 15 minutes to escape 3 rooms:\n\n".format(self.playerName) +\
               "the Starting Room, the Haunted Hallway, and your Final destination.\nIf you can escape before the time runs out you win, if not...\n\nGOOD LUCK!")
 
     #custom __str__()
@@ -104,19 +104,25 @@ class Room:
 
 class Game(Frame):
     def __init__(self, parent):
+        Frame.__init__(self, parent)
+        
+    #create rooms
+    def createRooms(self):
         #create the rooms
-        r1 = Room("Start", "start.jpg")
-        r2 = Room("Haunted Office", "hauntedOffice.jpeg")
-        r3 = Room("Haunted Hall", "hauntedHall.JPG")
-        r4 = Room("Final Destination... almost", "finalRoom.jpeg")
-        r5 = Room("Final Destination... closer", "finalRoom.jpeg")
-        r6 = Room("Final Destination... right there", "finalRoom.jpeg")
-        r7 = Room("CONGRADULATIONS", "winner.jpg")
+        r1 = Room("Intro", "intro.gif")
+        r2 = Room("Haunted Office", "hauntedOffice.gif")
+        r3 = Room("Haunted Hall", "hauntedHall.gif")
+        r4 = Room("Final Destination... almost", "finalRoom.gif")
+        r5 = Room("Final Destination... closer", "finalRoom.gif")
+        r6 = Room("Final Destination... right there", "finalRoom.gif")
+        r7 = Room("CONGRADULATIONS", "winner.gif")
+        #r8 = Room("LOSER", "loser.gif")
 
         
         #add any items
         #r1 just intro page with rules
         r1.intro()
+        r1.addAnswer("continue", r2)
         
         #r2 items
         r2.addItem("bookshelf", "Very dusty. It has 3 books sitting on it.")
@@ -125,7 +131,7 @@ class Game(Frame):
         r2.addItem("orange_book", "This book has 514 written on it.")
         r2.addItem("mirror", "In this mirror you see someone standing behind you. There is also a map taped to it.")
         #r2 answer
-        r2.addAnswer(816, r3)
+        r2.addAnswer("816", r3)
         #r2 grabbables
         r2.addGrabbable("map")
         
@@ -141,9 +147,9 @@ class Game(Frame):
         r4.addItem("picture", "This picture is hanging on the wall. It seems to be a picture of the previous owner of the asylum.")
         r4.addItem("exit", "If you look ahead you can see the way out!")
         #r4 answers
-        r4.addAnswer("leaves", r4)
-        r4.addAnswer("nothing", r4)
-        r4.addAnswer("
+        r4.addAnswer("leaves", r5)
+        r5.addAnswer("nothing", r6)
+        r6.addAnswer("", r7)
 
         #set the current room to r1
         Game.currentRoom = r1
@@ -210,6 +216,77 @@ class Game(Frame):
         self.setRoomImage()
         #set status
         self.setStatus("")
+
+    #process input
+    def process(self, event):
+        
+        #set default response
+        response = "I don't understand. Try noun verb. Valid verbs are escape, look, and take."
+
+        #get the command input from the GUI
+        action = Game.player_input.get()
+        action = action.lower()
+        
+        #handle exits
+        if(action == "quit" or action == "exit"):
+            exit(0)
+
+        #handle end of game (death)
+        if(Game.currentRoom == None):
+            Game.player_input.delete(0, END)
+            return
+
+        #handle verbs and nouns
+        words = action.split()
+
+        if(len(words) == 2):
+            verb = words[0]
+            noun = words[1]
+
+            #process go
+            if(verb == "escape"):
+                #default response
+                response = "Invalid answer."
+
+                #check the currentRoom's exits
+                if(noun in Game.currentRoom.answers):
+                    #if it's valid, update currentRoom
+                    Game.currentRoom = Game.currentRoom.answers[noun]
+                    #notify user that room has changed
+                    response = "Next room."
+                    
+            #process look
+            elif(verb == "look"):
+                #default response
+                response = "I don't see that item."
+
+                #check the currentRoom's items
+                if(noun in Game.currentRoom.items):
+                    response = Game.currentRoom.items[noun]
+
+                        
+                                
+            #process take
+            elif(verb == "take"):
+                #default response
+                response = "I don't see that item."
+
+                #check currentRoom's grabbables
+                for grabbable in Game.currentRoom.grabbables:
+                    if(noun == grabbable):
+                        #add it to inventory
+                        Game.inventory.append(grabbable)
+                        #set the response
+                        response = "{} grabbed".format(grabbable)
+                        #remove it from the room's grabbables
+                        Game.currentRoom.delGrabbable(grabbable)
+                        #exit the loop
+                        break
+                    
+        #call the updates for display
+        self.setStatus(response)
+        self.setRoomImage()
+        Game.player_input.delete(0, END)
 
 
 #################################################
