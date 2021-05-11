@@ -2,9 +2,12 @@ from tkinter import *
 import time
 import LCD_driver
 from threading import Thread
+import os
+import pygame
+import tkinter.font as font
 
-start_min = 0
-start_sec = 10
+start_min = 9
+start_sec = 00
 isIntro = True
 
 #Room class
@@ -115,7 +118,7 @@ class Game(Frame):
         r4 = Room("Final Destination... almost", "finalRoom.gif")
         r5 = Room("Final Destination... closer", "finalRoom.gif")
         r6 = Room("Final Destination... right there", "finalRoom.gif")
-        r7 = Room("CONGRADULATIONS", "winner.gif")
+        r7 = Room("CONGRATULATIONS", "winner.gif")
 
 
         
@@ -131,7 +134,7 @@ class Game(Frame):
         r2.addItem("black_book", "This book has 13 written on it.")
         r2.addItem("grey_book", "This book has 26 written on it.")
         r2.addItem("mirror", "On here is written message: 'Sophie was murdered in her room. The Suspects were Julie, Zdena, David, Nicky, and Frank. Who killed her?'")
-        r2.addItem("calendar", "There is a calendar with only the month of February and the last 2 days are torn off. The calendar also seems to be upside down.")
+        r2.addItem("calendar", "There is a calendar with each month only having 26 days. The calendar also seems to be upside down.")
         #r2 answer
         r2.addAnswer("zdena", r3)
         #r2 grabbables
@@ -172,7 +175,7 @@ class Game(Frame):
         self.pack(fill = BOTH, expand = 1)
         
         #setup player input(bottom)
-        Game.player_input = Entry(self, bg = "white")
+        Game.player_input = Entry(self, bg = "white", font=font)
         Game.player_input.bind("<Return>", self.process)
         Game.player_input.pack(side=BOTTOM, fill = X)
         Game.player_input.focus()
@@ -185,7 +188,7 @@ class Game(Frame):
 
         #setup text output on the right of the display
         text_frame = Frame(self, width = WIDTH//2)
-        Game.text = Text(text_frame, bg = "lightgrey", state = DISABLED)
+        Game.text = Text(text_frame, bg = "lightgrey", state = DISABLED, font=font)
         Game.text.pack(fill = Y, expand = 1)
         text_frame.pack(side = RIGHT, fill = Y)
         text_frame.pack_propagate(False)
@@ -205,19 +208,25 @@ class Game(Frame):
         #clear the text widget
         Game.text.config(state = NORMAL)
         Game.text.delete("1.0", END)
-
+        global AUDIO
         #if dead, say so, otherwise set the text to __str__
         if(Game.currentRoom == None):
             Game.text.insert(END, status)
-        elif(Game.currentRoom.name == "CONGRADULATIONS"):
-            Game.text.insert(END, "You won! You may exit.\m")
-
+        elif(Game.currentRoom.name == "CONGRATULATIONS"):
+            Game.text.insert(END, "You won! Your score is {}. You may exit.".format(str(self.score())))
+            AUDIO = "WIN"
+            
         elif(Game.currentRoom.name == "Intro"):
-            Game.text.insert(END, "Welcome to the Haunted Asylum. We would like to explain how you will be able to escape.\n\nYou will have 15 minutes to escape 3 rooms:\n\n the Starting Room, the Haunted Hallway, and your Final destination.\nIf you can escape before the time runs out you win, if not...\n\nGOOD LUCK!")
+            Game.text.insert(END, "Welcome to the Haunted Asylum. We would like to explain how you will be able to escape." +\
+                             "\n\nYou will have 15 minutes to escape 3 rooms:" +\
+                             "\n\nThe Starting Room, the Haunted Hallway, and your Final destination." +\
+                             "\nIf you can escape before the time runs out you win, if not...\n\nGOOD LUCK!" +\
+                             "\nEnter 'answer continue' to begin")
         else:
             Game.text.insert(END, str(Game.currentRoom)+\
                              "\nYou are carrying: " +str(Game.inventory) +\
                              "\n\n" + status)
+            AUDIO = "NOTHING"
             Game.text.config(state = DISABLED)
 
     #play the game
@@ -235,7 +244,8 @@ class Game(Frame):
     def process(self, event):
         
         #set default response
-        response = "I don't understand. Try noun verb. Valid verbs are answer, use, look, and take."
+        response = "I don't understand. Try noun verb. Valid verbs are answer [item]," +\
+                   " use [item], look [item], and take [item]."
 
         #get the command input from the GUI
         action = Game.player_input.get()
@@ -243,7 +253,8 @@ class Game(Frame):
         
         #handle exits
         if(action == "quit" or action == "exit"):
-            exit(0)
+            mylcd.lcd_clear()
+            os._exit(0)
 
         #handle end of game (death)
         if(Game.currentRoom == None):
@@ -267,6 +278,8 @@ class Game(Frame):
                     if(noun == "continue"):
                         global isIntro
                         isIntro = False
+                        global START
+                        START =  time.time()
                     #if it's valid, update currentRoom
                     Game.currentRoom = Game.currentRoom.answers[noun]
                     #notify user that room has changed
@@ -289,17 +302,15 @@ class Game(Frame):
                 for i in range(len(Game.inventory)):
                     #a valid item is found
                     if(Game.inventory[i] == "scalpel"):
-                        #check for valid item in room
-                        for i in range(len(Game.currentRoom.items)):
                             #valid item is found
-                            if("corpse" in Game.currentRoom.items.keys()):
-                                #change description
-                                Game.currentRoom.items["foot"] = "Inside is a key"
-                                Game.currentRoom.items["arm"] = "There is nothing in here but blood and tissue."
-                                Game.currentRoom.items["stomach"] = "Nothing but guts in here"
-                                #set response(success)
-                                response = "Item used."
-                                Game.inventory.remove("key")
+                        if("corpse" in Game.currentRoom.items.keys()):
+                            #change description
+                            Game.currentRoom.items["foot"] = "Inside is a key"
+                            Game.currentRoom.items["arm"] = "There is nothing in here but blood and tissue."
+                            Game.currentRoom.items["stomach"] = "Nothing but guts in here"
+                            #set response(success)
+                            response = "Item used."
+                            Game.inventory.remove("scalpel")
             elif(verb == "use" and noun == "key"):
                 #set default response
                 response = "I don't see that item in your inventory."
@@ -307,15 +318,13 @@ class Game(Frame):
                 for i in range(len(Game.inventory)):
                     #a valid item is found
                     if(Game.inventory[i] == "key"):
-                        #check for valid item in room
-                        for i in range(len(Game.currentRoom.items)):
-                            #valid item is found
-                            if("filing_cabinet" in Game.currentRoom.items.keys()):
-                                #change description
-                                Game.currentRoom.items["filing_cabinet"] = "Inside is a file folder that has a piece of paper with a riddle written on it: 'Leonard works in the morgue,  When he tries to put each cadaver in its own gurney, he has one cadaver too many. But if he puts two cadavers per gurney, he has one gurney too many. How many cadavers and how many gurneys does Leonard have?'"
-                                #set response(success)
-                                response = "Item used."
-                                Game.inventory.remove("key")
+                        #valid item is found
+                        if("filing_cabinet" in Game.currentRoom.items.keys()):
+                            #change description
+                            Game.currentRoom.items["filing_cabinet"] = "Inside is a file folder that has a piece of paper with a riddle written on it: 'Leonard works in the morgue,  When he tries to put each cadaver in its own gurney, he has one cadaver too many. But if he puts two cadavers per gurney, he has one gurney too many. How many cadavers and how many gurneys does Leonard have?' \nAnswer (#;#)"
+                            #set response(success)
+                            response = "Item used."
+                            Game.inventory.remove("key")
 
                         
                                 
@@ -345,10 +354,13 @@ class Game(Frame):
         while(isIntro):
             pass
 
-        mylcd.lcd_display_string(str(minutes)+" minutes",1, 1)
-        mylcd.lcd_display_string(str(seconds)+" seconds", 2, 1)
-        
-        if(seconds == 0 and minutes != 0):
+        mylcd.lcd_clear()
+        mylcd.lcd_display_string(str(minutes)+" minutes",1)
+        mylcd.lcd_display_string(str(seconds)+" seconds", 2)
+        if(Game.currentRoom.name == "CONGRATULATIONS"):
+            mylcd.lcd_clear()
+            mylcd.lcd_display_string("WINNER!", 1)
+        elif(seconds == 0 and minutes != 0):
             #window.after(1000, timer, minutes-1, 59)
             time.sleep(1)
             start_min = minutes
@@ -365,8 +377,10 @@ class Game(Frame):
             start_sec = 0
             #Tells the player they lose if their time runs out
             deathRoom = Game.currentRoom.name
+            global AUDIO
+            AUDIO = "LOSE"
             Game.currentRoom = None
-            response = "You died in {}".format(deathRoom)
+            response = "You died in {}, your score is {}".format(deathRoom, str(self.score()))
             self.setStatus(response)
             self.setRoomImage()
             Game.player_input.delete(0, END)
@@ -378,8 +392,35 @@ class Game(Frame):
                 time.sleep(1)
                 mylcd.lcd_clear()
                 time.sleep(1)
+                
+    def score(self):
+        finalTime = time.time()
+        scoreTime = int((finalTime - START) // 1)
+        maxScore = 3000
+        for i in range(scoreTime):
+            maxScore -= 5
+        return maxScore
 
-
+    def sound(self):
+        pygame.init()
+        while(True):
+            global AUDIO
+            if (AUDIO == "NOTHING"):
+                audio = pygame.mixer.Sound("Unseen-Horrors.wav")
+                audio.play()
+                AUDIO = False
+            else:
+                if(AUDIO == "WIN"):
+                    audio = pygame.mixer.Sound("WIN.wav")
+                    audio.play()
+                    time.sleep(3)
+                    AUDIO = False
+                elif(AUDIO == "LOSE"):
+                    audio = pygame.mixer.Sound("LOSE.wav")
+                    audio.play()
+                    time.sleep(4)
+                    AUDIO = False
+                    
 
 #################################################
 #main code( construct the display and begin game)
@@ -392,15 +433,21 @@ HEIGHT = 600
 #create the window
 window = Tk()
 window.title("Escape Room")
+window.attributes("-fullscreen", True)
+
+font = font.Font(family="Times New Roman", size=15)
 
 #create the GUI as a Tkinter canvas within the window
 g = Game(window)
 
 #begin the game
+START = 0.0
+AUDIO = True
 mylcd = LCD_driver.lcd() 
 if __name__ == '__main__':
     Thread(target = g.play).start()
     Thread(target = g.timer, args=[start_min, start_sec]).start()
+    Thread(target = g.sound).start()
 #g.play()
 
 #wait until the main window closes
