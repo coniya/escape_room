@@ -10,6 +10,13 @@ start_min = 9
 start_sec = 00
 isIntro = True
 
+## AUDIO ATTRIBUTION ####################################
+# Unseen Horrors Kevin MacLeod (incompetech.com)
+# Licensed under Creative Commons: By Attribution 3.0 License
+# http://creativecommons.org/licenses/by/3.0/
+# Music promoted by https://www.chosic.com/
+#########################################################
+
 #Room class
 class Room:
     #constructor
